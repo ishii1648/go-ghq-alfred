@@ -42,6 +42,9 @@ func run() {
 		query := strings.Trim(c.Args()[0], " \n")
 		repos := c.Args()[1:c.NArg()]
 		for _, repo := range repos {
+			if isWorktree(repo) {
+				continue
+			}
 			addNewItem(repo)
 		}
 		if len(query) > 0 {
@@ -119,6 +122,18 @@ func createModItem(repo []string, path string, modKey aw.ModKey) *aw.Modifier {
 		Arg(arg).
 		Subtitle(sub).
 		Valid(true)
+}
+
+// isWorktree reports whether repoPath is a linked git worktree. A primary
+// clone has .git as a directory; a worktree has .git as a regular file
+// containing "gitdir: ...". Paths without .git are treated as non-worktree to
+// preserve the previous behavior of listing every path ghq emits.
+func isWorktree(repoPath string) bool {
+	info, err := os.Stat(path.Join(repoPath, ".git"))
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
 }
 
 func getIcon(repoPath []string) *aw.Icon {

@@ -1,9 +1,13 @@
 package main
 
 import (
-	aw "github.com/deanishe/awgo"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	aw "github.com/deanishe/awgo"
 )
 
 const (
@@ -69,6 +73,53 @@ func TestGetDomainName(t *testing.T) {
 		if actual := getDomainName(repoPath); actual != tc.domain {
 			t.Errorf("%s is expected, but actual %s\n", tc.domain, actual)
 		}
+	}
+}
+
+func TestIsWorktree(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "go-ghq-alfred-worktree-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	primary := filepath.Join(tmp, "primary")
+	if err := os.MkdirAll(filepath.Join(primary, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	worktree := filepath.Join(tmp, "worktree")
+	if err := os.MkdirAll(worktree, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(
+		filepath.Join(worktree, ".git"),
+		[]byte("gitdir: "+filepath.Join(primary, ".git", "worktrees", "wt")+"\n"),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	plain := filepath.Join(tmp, "plain")
+	if err := os.MkdirAll(plain, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name string
+		path string
+		want bool
+	}{
+		{"primary clone (.git dir)", primary, false},
+		{"linked worktree (.git file)", worktree, true},
+		{"path without .git", plain, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isWorktree(tc.path); got != tc.want {
+				t.Errorf("isWorktree(%q) = %v, want %v", tc.path, got, tc.want)
+			}
+		})
 	}
 }
 

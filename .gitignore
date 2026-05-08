@@ -25,4 +25,5 @@ vendor/
 go-ghq-alfred
 *.alfredworkflow
 dist/
+build/
 testdir/
